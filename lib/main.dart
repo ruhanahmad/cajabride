@@ -38,14 +38,15 @@ class MyApp extends StatelessWidget {
       //     '/register': (context) => SignUpPage(),
       //     // '/getapproved': (context) => const GetApproved(),
       //   },
-      home:  
+      home: 
+       
       // HomeScreens()
-      // HomePage(),
+      HomePage(),
       // LoginPage(),
       // PickupLocationScreen(),
       // AddressEntryScreen(),
       // AddressEntryScreened(),
-      Welcome(),
+      // Welcome(),
     );
   }
 }

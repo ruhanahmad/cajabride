@@ -8,11 +8,16 @@ import 'package:cajabride/testtwo.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:geocoding/geocoding.dart';
+
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+
+import 'package:location/location.dart' as loc;
+import 'package:location/location.dart';
+
 
 class HomePage extends StatefulWidget {
   @override
@@ -21,23 +26,151 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   UserController userController = Get.put(UserController());
-    
-    LatLng? _selectedLocation;
-  TextEditingController _locationController = TextEditingController();
+  
+  final TextEditingController _locationController = TextEditingController();
+GoogleMapController? _mapController;
+loc.Location _location = new loc.Location();
+  LatLng? _currentLocation;
 
   @override
-  void dispose() {
-    userController.locationController.dispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+    _getCurrentLocation();
   }
+   Future<void> _getCurrentLocation() async {
+    final hasPermission = await _location.hasPermission();
+    if (hasPermission == PermissionStatus.granted) {
+      final locationData = await _location.getLocation();
+      setState(() {
+        _currentLocation = LatLng(locationData.latitude!, locationData.longitude!);
+      });
+    } 
+    else {
+      final permissionStatus = await _location.requestPermission();
+      if (permissionStatus == PermissionStatus.granted) {
+        _getCurrentLocation();
+      }
+    }
+  }
+// mapController.animateCamera(CameraUpdate.newLatLng(currentLocation));
+
+      List<dynamic> _addressSuggestions = [];
+    LatLng? _selectedLocation;
+
+  void _getAddressSuggestions(String input) async {
+    String url = 'https://maps.googleapis.com/maps/api/place/autocomplete/json' +
+        '?input=$input' +
+        '&types=address' +
+        '&key=AIzaSyCZJDq4ZZiah_srzkzjQDtxnXVE-gbf85M';
+
+    final response = await http.get(Uri.parse(url));
+
+    if (response.statusCode == 200) {
+      final jsonData = jsonDecode(response.body);
+      final predictions = jsonData['predictions'];
+
+      setState(() {
+        _addressSuggestions = predictions
+            .map((prediction) => prediction['description'])
+            .toList();
+      });
+      
+    }
+  }
+  // @override
+  // void dispose() {
+  //   userController.locationController.dispose();
+  //   super.dispose();
+  // }
   Completer<GoogleMapController> _controller = Completer();
   Set<Polygon> _polygons = Set<Polygon>();
     Set<Polyline> _polyline = Set<Polyline>();
     List<LatLng> polygonsLatLng = <LatLng>[];
+    Set<Marker> _markers = Set<Marker>(); 
 
     int _polygonCounter = 1;
     int _polylineCounter = 1;
 
+ void _showBottomSheet(BuildContext context) {
+  showModalBottomSheet(
+    context: context,
+    builder: (BuildContext context) {
+
+              return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setState) {
+            return 
+            
+             Padding(
+        padding: EdgeInsets.all(16.0),
+        child: Container(
+          height: 700,
+          width: MediaQuery.of(context).size.width,
+          child: Column(
+            children: [
+
+              TextFormField(
+                controller: userController.locationController,
+                onChanged: _getAddressSuggestions,
+                decoration: InputDecoration(
+                  labelText: 'Enter Address',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              SizedBox(height: 16.0),
+              Expanded(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: _addressSuggestions.length,
+                  itemBuilder: (context, index) {
+
+                    return ListTile(
+                      title: 
+                    
+                      Text(_addressSuggestions[index]),
+                      onTap: () async {
+                        userController.locationController.text = _addressSuggestions[index];
+                            //  LatLng latLngs = await fetchLatLng(userController.locationController.text);
+                            // _moveToLocation(latLngs);
+                        final placeDetailsUrl =
+                            'https://maps.googleapis.com/maps/api/place/details/json' +
+                                '?place_id=PLACE_ID' +
+                                '&fields=geometry' +
+                                '&key=AIzaSyCZJDq4ZZiah_srzkzjQDtxnXVE-gbf85M';
+                      
+                        final placeResponse = await http.get(Uri.parse(placeDetailsUrl));
+                      
+                        if (placeResponse.statusCode == 200) {
+                          final placeJsonData = jsonDecode(placeResponse.body);
+                          // final location = placeJsonData['result']['geometry']['location'];
+                          // final latitude = location['lat'];
+                          // final longitude = location['lng'];
+                      
+                          // _moveToLocation(LatLng(latitude, longitude));
+                       await    getDirections();
+                        }
+                      
+                        setState(() {
+                          _addressSuggestions.clear();
+                        });
+                      },
+                    );
+                  },
+                ),
+              ),
+             
+            ],
+          ),
+        ),
+      );
+          },
+        );
+      
+
+   
+    },
+  );
+
+}
 
     void setPolygon()async {
 final  polygonIdVal = "polygon_$_polygonCounter";
@@ -65,6 +198,8 @@ _polyline.add( Polyline(
  ));
 
     }
+
+
 
 
   void _selectLocation(LatLng location) async {
@@ -104,7 +239,27 @@ CameraPosition(
 
               );
 
+              _setMarkers(LatLng points) {
+setState(() {
+   _markers.add(Marker(markerId: MarkerId('marker'),
+   position: points
+   
+   ),
+   
+   );
+      _markers.add(Marker(markerId: MarkerId('marker2'),
+   position: points
+   
+   ),
+   
+   );
+});
+              }
+            
               Future<Map<String,dynamic>> getDirections()async {
+              
+               
+      
  String url =
         'https://maps.googleapis.com/maps/api/directions/json' +
             '?origin=paris' +
@@ -126,15 +281,28 @@ CameraPosition(
              print(results);
             return results;
               }
-          Future<void>    goToPlace(double lat,double lng)async{
+          Future<void>    goToPlace(double lat,double lng,
+          Map<String,dynamic> boundsNe,
+          Map<String,dynamic> boundsSw,
+
+          
+          )async{
           
           final GoogleMapController controller = await _controller.future;
           controller.animateCamera(CameraUpdate.newCameraPosition(
             CameraPosition(target: LatLng(lat, lng),zoom: 12),
             
             ));
+            
+          controller.animateCamera(CameraUpdate.newLatLngBounds(
+            LatLngBounds(
+              southwest: LatLng(boundsSw["lat"], boundsSw["lng"]), 
+              northeast: LatLng(boundsNe["lat"], boundsNe["lng"]), ),25
+            )
+            
+            );
 
-      _setMarker(LatLng(lat, lng));
+      _setMarkers(LatLng(lat, lng));
               }
 // 09
   @override
@@ -142,7 +310,7 @@ CameraPosition(
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        title: Text('Uber'),
+        title: Text('Jumanje'),
         actions: [
           IconButton(
             icon: Icon(Icons.menu),
@@ -160,13 +328,15 @@ CameraPosition(
       ),
       body: Stack(
         children: [
+          _currentLocation != null ?
           GoogleMap(
            mapType: MapType.normal,
            myLocationButtonEnabled: true,
            polygons: _polygons,
-           polylines: _polyline,
+           polylines:_polyline,
+           markers:_markers,
            onMapCreated: (GoogleMapController cgoogle){
-             
+             _controller.complete(cgoogle);
            },
                      onTap: (_) {
             _showContainer();
@@ -176,11 +346,13 @@ CameraPosition(
           },
            // Replace with your actual Google Map implementation
            initialCameraPosition: CameraPosition(
-             target: LatLng(37.422, -122.084),
+             target: _currentLocation!,
              zoom: 14.0,
 
            ),
-            ),
+            ):
+            CircularProgressIndicator()
+            ,
           Align(
             alignment: Alignment.bottomCenter,
             child: AnimatedOpacity(
@@ -301,9 +473,13 @@ CameraPosition(
                               borderSide: BorderSide.none,
                             ),
                           ),
-                            // onTap: () {
-                            //     Get.to (PickupLocationScreen());
-                            // },
+                            onTap: ()async {
+                            
+                                 _showBottomSheet(context);
+                              
+ 
+                                // Get.to (PickupLocationScreen());
+                            },
                         ),
                       ),
                       SizedBox(height: 10,),
@@ -376,8 +552,8 @@ CameraPosition(
 
                 var directions =       await  getDirections();
 
-
-                    goToPlace(directions["start_location"]["lat"],directions["end_location"]["lng"],
+                           print(directions);
+                   await goToPlace(directions["start_location"]["lat"],directions["end_location"]["lng"],
                     directions["bounds_ne"],
                     directions["bounds_sw"],
                     

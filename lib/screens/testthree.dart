@@ -60,19 +60,19 @@ class _AddressEntryScreenedState extends State<AddressEntryScreened> {
 }
 
 
-  void _moveToLocation(LatLng location) {
-    _mapController!.animateCamera(CameraUpdate.newLatLng(location));
+  // void _moveToLocation(LatLng location) {
+  //   _mapController!.animateCamera(CameraUpdate.newLatLng(location));
 
-    setState(() {
-      _markers.clear();
-      _markers.add(
-        Marker(
-          markerId: MarkerId('selectedLocation'),
-          position: location,
-        ),
-      );
-    });
-  }
+  //   setState(() {
+  //     _markers.clear();
+  //     _markers.add(
+  //       Marker(
+  //         markerId: MarkerId('selectedLocation'),
+  //         position: location,
+  //       ),
+  //     );
+  //   });
+  // }
   //   @override
   // void dispose() {
   //   userController.locationController.dispose();
@@ -86,13 +86,18 @@ class _AddressEntryScreenedState extends State<AddressEntryScreened> {
         title: Text('Address Entry'),
          actions: [
           GestureDetector(
-            onTap: () {
+            onTap: () async{
               Get.to(HomePage());
+                    var directions =       await  userController.getDirections();
+
+                           print(directions);
+                // var directions =       await  getDirections();
             },
             child: Text("Ok",style: TextStyle(color: Colors.white,fontSize: 20),))
         ],
       ),
-      body: Padding(
+      body: 
+      Padding(
         padding: EdgeInsets.all(16.0),
         child: Container(
           height: 700,
@@ -117,7 +122,7 @@ class _AddressEntryScreenedState extends State<AddressEntryScreened> {
                     onTap: () async {
                       userController.locationController.text = _addressSuggestions[index];
                            LatLng latLngs = await fetchLatLng(userController.locationController.text);
-                          _moveToLocation(latLngs);
+                          // _moveToLocation(latLngs);
                       final placeDetailsUrl =
                           'https://maps.googleapis.com/maps/api/place/details/json' +
                               '?place_id=PLACE_ID' +
@@ -143,18 +148,18 @@ class _AddressEntryScreenedState extends State<AddressEntryScreened> {
                 },
               ),
               SizedBox(height: 16.0),
-              Expanded(
-                child: GoogleMap(
-                  onMapCreated: (controller) {
-                    _mapController = controller;
-                  },
-                  initialCameraPosition: CameraPosition(
-                    target: LatLng(37.422, -122.084),
-                    zoom: 14.0,
-                  ),
-                  markers: _markers,
-                ),
-              ),
+              // Expanded(
+              //   child: GoogleMap(
+              //     onMapCreated: (controller) {
+              //       _mapController = controller;
+              //     },
+              //     initialCameraPosition: CameraPosition(
+              //       target: LatLng(37.422, -122.084),
+              //       zoom: 14.0,
+              //     ),
+              //     markers: _markers,
+              //   ),
+              // ),
             ],
           ),
         ),
